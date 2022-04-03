@@ -67,3 +67,84 @@ When we need other wallets, we can:
 let [wallet1, wallet2, wallet3] = await ethers.getSigners() // first 3 wallets are saved in the variables
 await ca.connect(wallet2).methodA('paramA')
 ```
+
+## Frontend 
+The methods mentioned previously can be used for frontend.
+
+### Connect Metamask
+To connect metamask to your web application.
+```js
+const connectWallet = async () => {
+   await window.ethereum.request({ method: 'eth_requestAccounts' });
+   const addr = window.ethereum.selectedAddress
+}
+```
+
+### Readonly methods
+Generally used in useEffect hook. ContractABI can be imported from artifacts.
+```js
+// gets provider from Metamask
+// can be ethereum mainnet, polygon testnet, etc, based on what is selected on metamask
+const provider = new ethers.providers.Web3Provider(window.ethereum)
+const contractInstance = new ethers.Contract(`contract-address`, contractABI, provider)
+const data = await contractInstance.myReadOnlyMethod(params)
+```
+
+### External methods
+
+This block will be used to call external methods of a contract. It required signing by the wallet, and takes a transaction fee.
+```js
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+// selected address on metamask is now the signer
+const signer = await provider.getSigner();
+const contractInstance = new ethers.Contract(`contract-address`, contractABI, provider)
+const txResult = await contractInstance.myExternalMethod(params)
+// await contractInstance.myExternalMethod(address, ethers.BigNumber.from("10000000000000"))
+const receipt = txResult.wait() 
+if (receipt.status === 1) {
+	// transaction successful
+	// successful message, call other methods if required
+} else {
+	// transaction failed
+	// error handling
+}
+```
+
+### Handle BigNumbers
+Big Numbers can be quite tricky to handle.
+
+To remain safe, the numerical value recieved by calling the readonly method, if you need to display that value in the UI, for example, user's balance.
+```js
+// 10 ** 18 wei = 1 ETH
+export function weiToETH (hexValue) {
+    return parseInt(hexValue.toString()) / 10 ** 18;
+}
+```
+
+And use the data returned to display in the UI.
+
+For transactions,
+
+```js
+const userBal = await ERC20Instance.balanceOf(user)
+// userBalance, userBal is of type BigNumber
+setUserBalance(userBal) // const [userBalance, setUserBalance] = useState(null)
+
+// to add 2 BigNumbers together
+const randomBigNumber = ethers.BigNumber.from("1200000")
+userBalance.add(randomBigNumber)
+
+// to subtract 2 BigNumbers
+userBalance.sub(randomBigNumber)
+
+// to multiply and divide BigNumber with regular number, the outcome is a bigNumber
+const percent = parseInt('60')
+const amountToSend = userBalance.mul(percent).div(100)
+
+// to use this bignumber as param for calling methods of contract
+const amount = ethers.BigNumber.from(amountToSend.toString())
+await ERC20Instance.transfer(`toAddress`, amount)
+```
+
+
+
