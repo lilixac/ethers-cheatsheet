@@ -19,7 +19,22 @@ This works even if folders are nested in contracts directory as:
    └──  SafeMath.sol
 ```
 
-To deploy them:
+### Get Accounts
+We generally need more than a account/wallet to test. We can get multiple wallets using `ethers.getSigners()`. It returns array of wallets that we can use. All these wallets have some test eth already preloaded for hardhat development environment.
+
+When calling external method, when we didn't specify the signer, the 1st wallet returned by this method is used. This wallet is used to deploy the contracts as well.
+
+When we need other wallets, we can:
+```js
+let [wallet1, wallet2, wallet3] = await ethers.getSigners() // first 3 wallets are saved in the variables
+await ca.connect(wallet2).methodA('paramA')
+
+// for address
+let addr1 = wallet1.getAddress()
+await c1.transfer(addr1, ethers.BigNumber.from('1000'))
+```
+
+To deploy contracts:
 
 ```js
 const CA = await ethers.getContractFactory('ContractA')
@@ -27,6 +42,9 @@ const CB = await ethers.getContractFactory('ContractB')
 
 ca = CA.deploy()
 cb = CB.deploy('arg1','arg2')
+
+// deploy using other account
+ca1 = CA.connect(wallet2).deploy()
 ```
 
 
@@ -36,10 +54,18 @@ To call `methodA` external method in ContractA:
 await ca.connect(`signer-wallet`).methodA() // no params
 await ca.connect(`signer-wallet`).methodA('param1','param2') // with params
 ```
-If signer is not required, we can just:
+If signer is not required, we can skip connect. It connects with the 1st account.
 ```js
 await ca.methodA() // no params
 await ca.methodA('param1','param2') // with params
+```
+
+### Calling payable method
+To call `payableMethod` external method in ContractA. The concept of signer is same as above:
+```js
+const amount = ethers.utils.parseUnits("0.1") // 0.1 ETH
+await ca.connect(`signer-wallet`).payableMethod({value: amoun }) // no params
+await ca.connect(`signer-wallet`).payableMethod('param1','param2', {value: amount}) // with params
 ```
 
 ### Calling readonly method
@@ -55,17 +81,6 @@ We can't just use regular integers everywhere, especially when we're working wit
 ```js
 ethers.BigNumber.from('1000'); // 100 tokens, not 100 * 10 ** decimals
 await erc20.transfer(address, ethers.BigNumber.from('10000')) // transfer 10000 erc20 tokens to address
-```
-
-### Get Accounts
-We generally need more than a account/wallet to test. We can get multiple wallets using `ethers.getSigners()`. It returns array of wallets that we can use. All these wallets have some test eth already preloaded for hardhat development environment.
-
-When calling external method, when we didn't specify the signer, the 1st wallet returned by this method is used. This wallet is used to deploy the contracts as well.
-
-When we need other wallets, we can:
-```js
-let [wallet1, wallet2, wallet3] = await ethers.getSigners() // first 3 wallets are saved in the variables
-await ca.connect(wallet2).methodA('paramA')
 ```
 
 ## Frontend 
@@ -98,6 +113,7 @@ const provider = new ethers.providers.Web3Provider(window.ethereum);
 // selected address on metamask is now the signer
 const signer = await provider.getSigner();
 const contractInstance = new ethers.Contract(`contract-address`, contractABI, provider)
+// or you can use try catch for this
 const txResult = await contractInstance.myExternalMethod(params)
 // await contractInstance.myExternalMethod(address, ethers.BigNumber.from("10000000000000"))
 const receipt = txResult.wait() 
